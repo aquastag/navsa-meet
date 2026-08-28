@@ -1,0 +1,24 @@
+name: Bootstrap Skillvelop Meet source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  unpack-source:
+    if: github.event.head_commit.message == 'Add source bootstrap workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack validated source
+        run: |
+          tar -xzf skillvelop-meet-source.tar.gz
+          rm skillvelop-meet-source.tar.gz
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish Skillvelop Meet application source"
+          git push
