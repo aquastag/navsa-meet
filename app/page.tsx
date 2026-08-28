@@ -20,6 +20,7 @@ export default function Home(){
   const [messages,setMessages]=useState<Message[]>([]),[draft,setDraft]=useState(""),[reaction,setReaction]=useState(""),[strokes,setStrokes]=useState<Stroke[]>([]),[sharedDoc,setSharedDoc]=useState<SharedDoc|null>(null),[toast,setToast]=useState(""),[error,setError]=useState("");
   const localVideo=useRef<HTMLVideoElement>(null),localStream=useRef<MediaStream|null>(null),room=useRef<MeetingRoom|null>(null),mesh=useRef<WebRTCMesh|null>(null),fileChunks=useRef<Record<string,string[]>>({}),docBytes=useRef<{name:string;type:string;data:string}|null>(null),strokesRef=useRef<Stroke[]>([]),peopleRef=useRef<Participant[]>([]),hostRef=useRef(false);
   useEffect(()=>{strokesRef.current=strokes},[strokes]);useEffect(()=>{peopleRef.current=people},[people]);
+  useEffect(()=>{const video=localVideo.current,stream=localStream.current;if(video&&stream){video.srcObject=stream;void video.play().catch(()=>{})}},[meeting,classroom,cameraOn]);
   useEffect(()=>{if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});return()=>{void room.current?.disconnect();mesh.current?.close();localStream.current?.getTracks().forEach(t=>t.stop())}},[]);
   function notice(text:string){setToast(text);setTimeout(()=>setToast(""),2300)}
   async function broadcast(type:string,payload?:unknown,to?:string){room.current?.send(type,payload,to)}
@@ -38,7 +39,7 @@ export default function Home(){
   }
   async function join(create=false){
     setError("");const id=roomId.trim()||roomCode(),host=create||!roomId.trim();setRoomId(id);setIsHost(host);hostRef.current=host;history.replaceState({},"",`?room=${encodeURIComponent(id)}&size=${limit}`);
-    try{const media=await navigator.mediaDevices.getUserMedia({video:true,audio:true});localStream.current=media;setMeeting(true);setTimeout(()=>{if(localVideo.current)localVideo.current.srcObject=media},0);mesh.current=new WebRTCMesh(media,(t,p,to)=>broadcast(t,p,to),setRemoteStreams);
+    try{const media=await navigator.mediaDevices.getUserMedia({video:true,audio:true});localStream.current=media;setMeeting(true);mesh.current=new WebRTCMesh(media,(t,p,to)=>broadcast(t,p,to),setRemoteStreams);
       const connection=new MeetingRoom(id,{name:name.trim()||"Guest",isHost:host,mic:true,camera:true},{onEvent:applyEvent,onPresence:(list)=>{setPeople(list);if(list.length>limit&&!list.some(p=>p.id===connection.clientId&&p.isHost)){setError(`This ${limit}-person room is full.`);void connection.disconnect()}},onStatus:setConnected});room.current=connection;await connection.connect();setMessages([{id:crypto.randomUUID(),name:"Skillvelop Meet",text:"Welcome! Media is encrypted and sent peer to peer.",time:"Now"}]);setTimeout(()=>broadcast("request-state"),800);
     }catch{setError("Camera and microphone permission is required to enter this meeting.")}
   }
